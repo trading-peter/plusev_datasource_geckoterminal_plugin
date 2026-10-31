@@ -130,6 +130,57 @@ func (c *Client) GetPoolByAddress(poolAddress string) (trading.Market, error) {
 	}, nil
 }
 
+// GetPoolForToken finds the top-liquidity pool for a token mint address.
+// If quote is non-empty, only pools where the quote token symbol matches are considered.
+func (c *Client) GetPoolForToken(mintAddress, quote string) (trading.Market, error) {
+	url := fmt.Sprintf("%s/networks/%s/tokens/%s/pools?include=base_token,quote_token&page=1",
+		baseURL, c.network, mintAddress)
+
+	var resp SearchPoolsResponse
+	_, err := c.requester.Send(&rt.Request{
+		URL:    url,
+		Method: "GET",
+		Headers: map[string]string{
+			"Accept": "application/json",
+		},
+	}, &resp)
+	if err != nil {
+		return trading.Market{}, fmt.Errorf("failed to fetch pools for token %s: %w", mintAddress, err)
+	}
+
+	tokenMap := make(map[string]IncludedToken, len(resp.Included))
+	for _, t := range resp.Included {
+		tokenMap[t.ID] = t
+	}
+
+	upQuote := strings.ToUpper(quote)
+
+	// Pools are returned sorted by liquidity (highest first).
+	// Pick the first one that matches the quote filter (if provided).
+	for _, pool := range resp.Data {
+		b, q := c.resolveTokenSymbols(pool, tokenMap)
+
+		if upQuote != "" && strings.ToUpper(q) != upQuote {
+			continue
+		}
+
+		return trading.Market{
+			Symbol:    b + "/" + q,
+			Label:     b + "/" + q,
+			Address:   pool.Attributes.Address,
+			Base:      b,
+			Quote:     q,
+			AssetType: "spot",
+		}, nil
+	}
+
+	if quote != "" {
+		return trading.Market{}, fmt.Errorf("no pool found for token %s with quote %s on %s", mintAddress, quote, c.network)
+	}
+
+	return trading.Market{}, fmt.Errorf("no pool found for token %s on %s", mintAddress, c.network)
+}
+
 // SearchPool searches for a pool matching the given base/quote pair and returns
 // it as a trading.Market. It uses the /search/pools endpoint, filtering results
 // to the configured network and picking the highest-liquidity match.

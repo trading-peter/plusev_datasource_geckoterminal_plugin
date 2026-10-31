@@ -12,6 +12,7 @@ import (
 	"github.com/plusev-terminal/go-plugin-common/requester"
 
 	"github.com/trading-peter/plusev_datasource_geckoterminal_plugin/geckoterminal"
+	"github.com/trading-peter/plusev_datasource_geckoterminal_plugin/ratelimits"
 )
 
 // ============================================================================
@@ -52,7 +53,11 @@ func (p *GeckoTerminalPlugin) GetMeta() m.Meta {
 		},
 		Resources: m.ResourceAccess{
 			AllowedNetworkTargets: []m.NetworkTargetRule{
-				{Pattern: "https://api.geckoterminal.com/*"},
+				{
+					Pattern: "https://api.geckoterminal.com/*",
+					// Free-tier budgets with sources; see package ratelimits.
+					Limits: ratelimits.GeckoTerminalAPI(),
+				},
 			},
 		},
 		Features: []string{},
@@ -83,27 +88,10 @@ func (p *GeckoTerminalPlugin) OnShutdown() error {
 }
 
 func (p *GeckoTerminalPlugin) GetRateLimits() []plugin.RateLimit {
-	// GeckoTerminal free tier: ~30 requests/minute.
-	return []plugin.RateLimit{
-		{
-			Command: ex.CMD_GET_MARKET,
-			Scope:   []plugin.RateLimitScope{plugin.RateLimitScopeIP},
-			RPS:     plugin.CalculateRPS(30, time.Minute),
-			Burst:   2,
-		},
-		{
-			Command: ex.CMD_GET_TIMEFRAMES,
-			Scope:   []plugin.RateLimitScope{plugin.RateLimitScopeIP},
-			RPS:     1.0,
-			Burst:   1,
-		},
-		{
-			Command: ex.CMD_GET_OHLCV,
-			Scope:   []plugin.RateLimitScope{plugin.RateLimitScopeIP},
-			RPS:     plugin.CalculateRPS(30, time.Minute),
-			Burst:   5,
-		},
-	}
+	// Opt out of the legacy per-command limiter: api.geckoterminal.com is paced
+	// by the manifest network-target limits declared in GetMeta, and an empty
+	// (but non-nil) return keeps the export while avoiding double throttling.
+	return []plugin.RateLimit{}
 }
 
 func (p *GeckoTerminalPlugin) RegisterCommands(router *plugin.CommandRouter) {
@@ -122,9 +110,15 @@ func (p *GeckoTerminalPlugin) handleGetMarket(params map[string]any) plugin.Resp
 		return plugin.ErrorResponseMsg(err.Error())
 	}
 
-	// If an address is provided, look up the pool directly.
+	parts := strings.SplitN(mp.Symbol, "/", 2)
+	quote := ""
+	if len(parts) == 2 {
+		quote = parts[1]
+	}
+
+	// If a token mint address is provided, find pools containing that token.
 	if mp.Address != "" {
-		market, err := p.client.GetPoolByAddress(mp.Address)
+		market, err := p.client.GetPoolForToken(mp.Address, quote)
 		if err != nil {
 			return plugin.ErrorResponse(err)
 		}
@@ -132,7 +126,6 @@ func (p *GeckoTerminalPlugin) handleGetMarket(params map[string]any) plugin.Resp
 	}
 
 	// Otherwise search by symbol (e.g. "SOL/USDC").
-	parts := strings.SplitN(mp.Symbol, "/", 2)
 	if len(parts) != 2 {
 		return plugin.ErrorResponseMsg("symbol must be in BASE/QUOTE format")
 	}
