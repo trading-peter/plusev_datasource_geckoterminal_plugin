@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/plusev-terminal/go-plugin-common/meta"
+	"github.com/plusev-terminal/go-plugin-common/v2/meta"
 )
 
 // Pins the declared GeckoTerminal budget so it cannot silently drift.

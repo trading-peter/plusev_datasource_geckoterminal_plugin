@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/plusev-terminal/go-plugin-common/logging"
-	"github.com/plusev-terminal/go-plugin-common/plugin"
-	rt "github.com/plusev-terminal/go-plugin-common/requester/types"
-	"github.com/plusev-terminal/go-plugin-common/trading"
+	"github.com/plusev-terminal/go-plugin-common/v2/logging"
+	"github.com/plusev-terminal/go-plugin-common/v2/plugin"
+	rt "github.com/plusev-terminal/go-plugin-common/v2/requester/types"
+	"github.com/plusev-terminal/go-plugin-common/v2/trading"
 )
 
 const baseURL = "https://api.geckoterminal.com/api/v2"
@@ -126,7 +126,7 @@ func (c *Client) GetPoolByAddress(poolAddress string) (trading.Market, error) {
 		Address:   resp.Data.Attributes.Address,
 		Base:      base,
 		Quote:     quote,
-		AssetType: "spot",
+		AssetType: trading.AssetTypeSpot,
 	}, nil
 }
 
@@ -170,7 +170,7 @@ func (c *Client) GetPoolForToken(mintAddress, quote string) (trading.Market, err
 			Address:   pool.Attributes.Address,
 			Base:      b,
 			Quote:     q,
-			AssetType: "spot",
+			AssetType: trading.AssetTypeSpot,
 		}, nil
 	}
 
@@ -221,7 +221,7 @@ func (c *Client) SearchPool(base, quote string) (trading.Market, error) {
 			Address:   pool.Attributes.Address,
 			Base:      b,
 			Quote:     q,
-			AssetType: "spot",
+			AssetType: trading.AssetTypeSpot,
 		}, nil
 	}
 
