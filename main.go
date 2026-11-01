@@ -45,7 +45,7 @@ func (p *GeckoTerminalPlugin) GetMeta() m.Meta {
 		Category:    "dex",
 		Description: "Historical OHLCV price data from DEX pools via GeckoTerminal. Supports 6M+ tokens across 1,500+ DEXes including Raydium, Uniswap, PancakeSwap and more. Ideal for meme coin and exotic cross-pair cost basis pricing.",
 		Author:      "trading_peter",
-		Version:     "v1.0.0",
+		Version: "v1.1.0",
 		Repository:  "https://github.com/trading-peter/plusev_datasource_geckoterminal_plugin",
 		Tags:        []string{"geckoterminal", "dex", "ohlcv", "meme", "solana", "ethereum", "defi"},
 		Contacts: []m.AuthorContact{
